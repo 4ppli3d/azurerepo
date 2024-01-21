@@ -2,7 +2,7 @@
 param parLocation string
 
 @sys.description('Deploy Apache Spark Pool.')
-param parDeployApacheSparkpool bool = true
+param parDeployApacheSparkpool bool
 
 @sys.description('The size of the Apache Spark Pool.')
 @allowed([
@@ -10,7 +10,7 @@ param parDeployApacheSparkpool bool = true
   'Medium'
   'Large'
 ])
-param parSparkNodeSize string = 'Medium'
+param parSparkNodeSize string
 
 @sys.description('Adls Storage Reference.')
 param parAdlsStorageName string

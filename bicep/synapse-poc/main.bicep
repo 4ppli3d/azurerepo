@@ -10,6 +10,17 @@ param parSqlAdminUsername string
 @secure()
 param parSqlAdminPassword string
 
+@sys.description('Deploy Apache Spark Pool.')
+param parDeployApacheSparkpool bool
+
+@sys.description('The size of the Apache Spark Pool.')
+@allowed([
+  'Small'
+  'Medium'
+  'Large'
+])
+param parSparkNodeSize string
+
 var varSynapseResourceGroupName = 'rg-${parLocation}-synapse-001'
 
 resource resSynapseResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = {
@@ -29,6 +40,8 @@ module modSynapseDeploy 'modules/modSynapse.bicep' = {
   scope: resourceGroup(resSynapseResourceGroup.name)
   name: parLocation
   params: {
+    parDeployApacheSparkpool: parDeployApacheSparkpool
+    parSparkNodeSize: parSparkNodeSize
     parAdlsStorageName: modAdlsDeploy.outputs.outAdlsName
     parLocation: parLocation
     parSqlAdminPassword: parSqlAdminPassword

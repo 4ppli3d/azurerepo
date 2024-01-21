@@ -18,7 +18,7 @@ resource resSynapseResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01'
 }
 
 module modAdlsDeploy 'modules/modAdls.bicep' = {
-  scope: resSynapseResourceGroup
+  scope: resourceGroup(resSynapseResourceGroup.name)
   name: 'modAdlsDeploy'
   params: {
     parLocation: parLocation
@@ -26,7 +26,7 @@ module modAdlsDeploy 'modules/modAdls.bicep' = {
 }
 
 module modSynapseDeploy 'modules/modSynapse.bicep' = {
-  scope: resSynapseResourceGroup
+  scope: resourceGroup(resSynapseResourceGroup.name)
   name: parLocation
   params: {
     parAdlsStorageName: modAdlsDeploy.outputs.outAdlsName

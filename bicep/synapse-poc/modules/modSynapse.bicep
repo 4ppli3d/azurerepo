@@ -1,6 +1,17 @@
 @sys.description('The Azure Region to deploy the Synapse Environment into.')
 param parLocation string
 
+@sys.description('Deploy Apache Spark Pool.')
+param parDeployApacheSparkpool bool = true
+
+@sys.description('The size of the Apache Spark Pool.')
+@allowed([
+  'Small'
+  'Medium'
+  'Large'
+])
+param parSparkNodeSize string = 'Medium'
+
 @sys.description('Adls Storage Reference.')
 param parAdlsStorageName string
 
@@ -20,6 +31,9 @@ resource resAdlsReference 'Microsoft.Storage/storageAccounts@2023-01-01' existin
 resource resSynapseWorkspace 'Microsoft.Synapse/workspaces@2021-06-01' = {
   name: varSynapseWorkspaceName
   location: parLocation
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     defaultDataLakeStorage: {
       accountUrl: resAdlsReference.properties.primaryEndpoints.dfs
@@ -28,6 +42,25 @@ resource resSynapseWorkspace 'Microsoft.Synapse/workspaces@2021-06-01' = {
     managedVirtualNetwork: 'default'
     sqlAdministratorLogin: parSqlAdminUsername
     sqlAdministratorLoginPassword: parSqlAdminPassword
+  }
+  resource resApacheSparkPool 'bigDataPools' = if (parDeployApacheSparkpool) {
+    location: parLocation
+    name: 'sparkpool'
+    properties: {
+      autoPause: {
+        delayInMinutes: 15
+        enabled: true
+      }
+      autoScale: {
+        enabled: true
+        maxNodeCount: 3
+        minNodeCount: 3
+      }
+      nodeCount: 3
+      nodeSize: parSparkNodeSize
+      nodeSizeFamily: 'MemoryOptimized'
+      sparkVersion: '2.4'
+    }
   }
   resource resWorkspaceFirewallAllowAll 'firewallRules' = {
     name: 'allowAll'
@@ -40,7 +73,7 @@ resource resSynapseWorkspace 'Microsoft.Synapse/workspaces@2021-06-01' = {
     name: 'AllowAllWIndowsAzureIps'
     properties: {
       startIpAddress: '0.0.0.0'
-      endIpAddress: '255.255.255.255'
+      endIpAddress: '0.0.0.0'
     }
   }
 }

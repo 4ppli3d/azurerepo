@@ -173,7 +173,7 @@ resource LogicApp 'Microsoft.Logic/workflows@2019-05-01' = {
               type: 'Http'
               inputs: {
                 method: 'POST'
-                uri: concat(managementEndpoint, resumeRESTAPI)
+                uri: '${managementEndpoint}${resumeRESTAPI}'
                 authentication: {
                   type: 'ManagedServiceIdentity'
                 }

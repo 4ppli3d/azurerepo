@@ -1,4 +1,4 @@
-targetScope  = 'subscription'
+targetScope = 'subscription'
 
 @sys.description('The Azure Region to deploy the Synapse Environment into.')
 param parLocation string
@@ -14,6 +14,18 @@ param parSqlAdminPassword string
 param parDeploySqlPool bool
 
 @sys.description('The SKU of the SQL Pool.')
+@allowed([
+  'DW100c'
+  'DW200c'
+  'DW300c'
+  'DW400c'
+  'DW500c'
+  'DW1000c'
+  'DW1500c'
+  'DW2000c'
+  'DW2500c'
+  'DW3000c'
+])
 param parSqlPoolSku string
 
 @sys.description('Deploy MetaData Sync.')
@@ -31,6 +43,10 @@ param parDeployApacheSparkpool bool
 param parSparkNodeSize string
 
 @sys.description('Frequency of the Resume Logic App.')
+@allowed([
+  'Daily'
+  'Weekdays'
+])
 param parFrequency string
 
 @sys.description('Time Zone to use in the Resume Logic App.')
@@ -159,36 +175,6 @@ param parResumeTime string
 ])
 param parPauseTime string
 
-var resumeTimeHour = split(substring(parResumeTime, 11, 5), ':')[0]
-var recurrenceHours = [
-  resumeTimeHour
-]
-var recurrenceMinutes = [
-  0
-]
-var dailySchedule = [
-  'Monday'
-  'Tuesday'
-  'Wednesday'
-  'Thursday'
-  'Friday'
-  'Saturday'
-  'Sunday'
-]
-var weekdaySchedule = [
-  'Monday'
-  'Tuesday'
-  'Wednesday'
-  'Thursday'
-  'Friday'
-]
-var recurrenceSchedule = ((parFrequency == 'Weekdays') ? weekdaySchedule : dailySchedule)
-var resumeTimeString = substring(parResumeTime, 0, 8)
-var managementEndpoint = environment().resourceManager
-var getRESTAPI = 'subscriptions/@{variables(\'RestAPIVariables\')[\'SubscriptionId\']}/resourceGroups/@{variables(\'RestAPIVariables\')[\'ResourceGroupName\']}/providers/Microsoft.Synapse/workspaces/@{variables(\'RestAPIVariables\')[\'workspaceName\']}/sqlPools/@{variables(\'RestAPIVariables\')[\'sqlPoolName\']}?api-version=2019-06-01-preview'
-var resumeRESTAPI = 'subscriptions/@{variables(\'RestAPIVariables\')[\'SubscriptionId\']}/resourceGroups/@{variables(\'RestAPIVariables\')[\'ResourceGroupName\']}/providers/Microsoft.Synapse/workspaces/@{variables(\'RestAPIVariables\')[\'workspaceName\']}/sqlPools/@{variables(\'RestAPIVariables\')[\'sqlPoolName\']}/resume?api-version=2019-06-01-preview'
-
-
 var varSynapseResourceGroupName = 'rg-${parLocation}-synapse-001'
 
 resource resSynapseResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = {
@@ -234,10 +220,43 @@ module modResumeLogicAppDeploy 'modules/modResumeLogicApp.bicep' = {
   name: 'modResumeLogicAppDeploy'
   params: {
     parFrequency: parFrequency
-    parSynapseWorkspaceId: modSynapseDeploy.outputs.outSynapsePrincipalId
+    parSynapseWorkspaceName: modSynapseDeploy.outputs.outSynapseWorkspaceName
+    parTIME_ZONE: parTIME_ZONE
     parLocation: parLocation
     parLogicAppName: 'la-${parLocation}-resume-001'
     parResumeTime: parResumeTime
     parSynapseSqlPoolName: 'sqlpool'
+  }
+}
+
+module modPauseLogicAppDeploy 'modules/modPauseLogicApp.bicep' = {
+  scope: resourceGroup(resSynapseResourceGroup.name)
+  name: 'modPauseLogicAppDeploy'
+  params: {
+    parFrequency: parFrequency
+    parSynapseWorkspaceName: modSynapseDeploy.outputs.outSynapseWorkspaceName
+    parTIME_ZONE: parTIME_ZONE
+    parLocation: parLocation
+    parLogicAppName: 'la-${parLocation}-pause-001'
+    parPauseTime: parPauseTime
+    parSynapseSqlPoolName: 'sqlpool'
+  }
+}
+
+module modPauseLogicAppRoleAssignment 'modules/modLogicAppRoleAssignments.bicep' = {
+  scope: resourceGroup(resSynapseResourceGroup.name)
+  name: 'modPauseLogicAppRoleAssignment'
+  params: {
+    parLogicAppId: modPauseLogicAppDeploy.outputs.outLogicAppId
+    parSynapseWorkspaceName: modSynapseDeploy.outputs.outSynapseWorkspaceName
+  }
+}
+
+module modResumeLogicAppRoleAssignment 'modules/modLogicAppRoleAssignments.bicep' = {
+  scope: resourceGroup(resSynapseResourceGroup.name)
+  name: 'modResumeLogicAppRoleAssignment'
+  params: {
+    parLogicAppId: modResumeLogicAppDeploy.outputs.outLogicAppId
+    parSynapseWorkspaceName: modSynapseDeploy.outputs.outSynapseWorkspaceName
   }
 }

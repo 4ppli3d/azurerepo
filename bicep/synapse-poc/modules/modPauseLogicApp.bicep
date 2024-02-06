@@ -1,19 +1,31 @@
-param location string
-param companyTla string
-param deploymentType string
-param LogicAppName string
-param Frequency string
-param TIME_ZONE string
-param PauseTime string
+@sys.description('Location of the Resume Logic App.')
+param parLocation string
 
-var pauseTimeHour = split(substring(PauseTime, 11, 5), ':')[0]
+@sys.description('Name of the Resume Logic App.')
+param parLogicAppName string
+
+@sys.description('Frequency of the Resume Logic App.')
+param parFrequency string
+
+@sys.description('Time Zone to use in the Resume Logic App.')
+param parTIME_ZONE string
+
+@sys.description('Time to resume the Synapse SQL Pool.')
+param parPauseTime string
+
+@sys.description('Name of the Synapse Workspace.')
+param parSynapseWorkspaceName string
+
+@sys.description('Name of the Synapse SQL Pool.')
+param parSynapseSqlPoolName string
+
+var resumeTimeHour = split(substring(parPauseTime, 11, 5), ':')[0]
 var recurrenceHours = [
-  pauseTimeHour
+  resumeTimeHour
 ]
 var recurrenceMinutes = [
   0
 ]
-var pauseTimeString = substring(PauseTime, 0, 8)
 var dailySchedule = [
   'Monday'
   'Tuesday'
@@ -30,19 +42,15 @@ var weekdaySchedule = [
   'Thursday'
   'Friday'
 ]
-var recurrenceSchedule = ((Frequency == 'Weekdays') ? weekdaySchedule : dailySchedule)
-var synapseWorkspaceName = toLower('${synapseName}ws1')
-var synapseName = '${companyTla}${deploymentType}'
-var synapseSQLPoolName = toLower('${workspaceName}p1')
-var workspaceName = toLower('${synapseName}ws1')
+var recurrenceSchedule = ((parFrequency == 'Weekdays') ? weekdaySchedule : dailySchedule)
+var managementEndpoint = environment().resourceManager
 var getRESTAPI = 'subscriptions/@{variables(\'RestAPIVariables\')[\'SubscriptionId\']}/resourceGroups/@{variables(\'RestAPIVariables\')[\'ResourceGroupName\']}/providers/Microsoft.Synapse/workspaces/@{variables(\'RestAPIVariables\')[\'workspaceName\']}/sqlPools/@{variables(\'RestAPIVariables\')[\'sqlPoolName\']}?api-version=2019-06-01-preview'
 var pauseRESTAPI = 'subscriptions/@{variables(\'RestAPIVariables\')[\'SubscriptionId\']}/resourceGroups/@{variables(\'RestAPIVariables\')[\'ResourceGroupName\']}/providers/Microsoft.Synapse/workspaces/@{variables(\'RestAPIVariables\')[\'workspaceName\']}/sqlPools/@{variables(\'RestAPIVariables\')[\'sqlPoolName\']}/pause?api-version=2019-06-01-preview'
 var aqcRESTAPI = 'subscriptions/@{variables(\'RestAPIVariables\')[\'SubscriptionId\']}/resourceGroups/@{variables(\'RestAPIVariables\')[\'ResourceGroupName\']}/providers/Microsoft.Synapse/workspaces/@{variables(\'RestAPIVariables\')[\'WorkspaceName\']}/sqlpools/@{variables(\'RestAPIVariables\')[\'SQLPoolName\']}/dataWarehouseUserActivities/current?api-version=2019-06-01-preview'
-var managementEndpoint = environment().resourceManager
 
 resource LogicApp 'Microsoft.Logic/workflows@2019-05-01' = {
-  name: LogicAppName
-  location: location
+  name: parLogicAppName
+  location: parLocation
   identity: {
     type: 'SystemAssigned'
   }
@@ -59,13 +67,13 @@ resource LogicApp 'Microsoft.Logic/workflows@2019-05-01' = {
                 name: 'RestAPIVariables'
                 type: 'Object'
                 value: {
-                  workspaceName: synapseWorkspaceName
-                  sqlPoolName: synapseSQLPoolName
+                  workspaceName: parSynapseWorkspaceName
+                  sqlPoolName: parSynapseSqlPoolName
                   ResourceGroupName: resourceGroup().name
                   SubscriptionId: subscription().subscriptionId
                   TenantId: subscription().tenantId
-                  ScheduleTimeZone: TIME_ZONE
-                  PauseTime: pauseTimeString
+                  ScheduleTimeZone: parTIME_ZONE
+                  ResumeTime: parPauseTime
                 }
               }
             ]
@@ -92,13 +100,13 @@ resource LogicApp 'Microsoft.Logic/workflows@2019-05-01' = {
           type: 'Http'
           inputs: {
             method: 'GET'
-            uri: '${managementEndpoint} ${getRESTAPI}'
+            uri: '${managementEndpoint}${getRESTAPI}'
             authentication: {
               type: 'ManagedServiceIdentity'
             }
           }
           runAfter: {
-            Initialize_ActiveQueryCount_variable: [
+            Initialize_API_Variables: [
               'Succeeded'
             ]
           }
@@ -187,11 +195,6 @@ resource LogicApp 'Microsoft.Logic/workflows@2019-05-01' = {
                   type: 'ManagedServiceIdentity'
                 }
               }
-              runAfter: {
-                Until_ZeroActiveQueries: [
-                  'Succeeded'
-                ]
-              }
             }
             Until_ZeroActiveQueries: {
               type: 'Until'
@@ -268,7 +271,7 @@ resource LogicApp 'Microsoft.Logic/workflows@2019-05-01' = {
           recurrence: {
             frequency: 'Week'
             interval: 1
-            timeZone: TIME_ZONE
+            timeZone: parTIME_ZONE
             startTime: '2019-01-01T00:00:00Z'
             schedule: {
               weekDays: recurrenceSchedule
@@ -282,3 +285,5 @@ resource LogicApp 'Microsoft.Logic/workflows@2019-05-01' = {
     }
   }
 }
+
+output outLogicAppId string = LogicApp.identity.principalId

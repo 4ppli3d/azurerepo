@@ -207,3 +207,5 @@ resource LogicApp 'Microsoft.Logic/workflows@2019-05-01' = {
     }
   }
 }
+
+output outLogicAppId string = LogicApp.identity.principalId

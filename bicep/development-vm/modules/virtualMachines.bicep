@@ -38,6 +38,9 @@ resource resVmDeploy 'Microsoft.Compute/virtualMachines@2023-09-01' = [for vm in
       computerName: 'devvm-${vm}'
       adminUsername: parAdminUsername
       adminPassword: parAdminPassword
+       linuxConfiguration: {
+         
+       }
     }
     hardwareProfile: {
       vmSize: 'Standard_DS1_v2'

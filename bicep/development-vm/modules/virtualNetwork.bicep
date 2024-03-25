@@ -1,8 +1,11 @@
 @sys.description('Azure Region to deploy the Virtual Network to.')
 param parLocation string
 
+@sys.description('Name of the Virtual Network.')
+param parVnetName string
+
 resource resVirtualNetwork 'Microsoft.Network/virtualNetworks@2023-09-01' = {
-  name: 'development-vnet'
+  name: parVnetName
   location: parLocation
   properties: {
     addressSpace: {

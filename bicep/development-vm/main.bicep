@@ -64,3 +64,12 @@ module modContainerRegistryDeploy 'modules/containers.bicep' = {
     parContainerRegistryName: parContainerRegistryName
   }
 }
+
+module modVirtualNetworkGatewayDeploy 'modules/virtualNetworkGateway.bicep' = {
+  scope: resDevelopmentRg
+  name:  'modVirtualNetworkGatewayDeploy'
+  params: {
+    parLocation: parLocation
+    parVnetName: modVirtualNetworkDeploy.outputs.outVirtualNetworkName
+  }
+}
